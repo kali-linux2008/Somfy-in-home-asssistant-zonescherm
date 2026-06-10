@@ -133,7 +133,7 @@ void decodeFrame() {
   //    degene waarvan de checksum klopt. Dit lost de Manchester-uitlijning op.
   byte frame[7];
   bool ok = false;
-  for (int off = 0; off <= 3 && !ok; off++) {
+  for (int off = 0; off <= 4 && !ok; off++) {
     for (int inv = 0; inv <= 1 && !ok; inv++) {
       ok = tryDecode(halfbits, hbCount, off, inv, frame);
     }
@@ -151,7 +151,7 @@ void decodeFrame() {
 // Bouwt 7 bytes uit de half-symboolstroom met gegeven offset/polariteit,
 // de-obfusceert en geeft true terug als de checksum klopt.
 bool tryDecode(byte* halfbits, int hbCount, int offset, bool invert, byte* outFrame) {
-  if (offset + 112 > hbCount) return false;
+  if (hbCount < 111) return false;   // minimaal ~56 bits nodig
   tryDecodeRaw(halfbits, hbCount, offset, invert, outFrame);
   byte cks = 0;
   for (int i = 0; i < 7; i++) cks ^= outFrame[i] ^ (outFrame[i] >> 4);
