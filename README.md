@@ -8,6 +8,14 @@ De ESP32 wordt een *virtuele afstandsbediening* die je net als een echte Telis i
 motor inleert. Daarna bedien je het scherm vanuit Home Assistant én blijft je fysieke
 Telis gewoon werken.
 
+> **Twee firmware-opties:**
+> 1. **ESPSomfy RTS** (deze README) — kant-en-klare firmware, web-UI, kan ook
+>    bestaande remotes *meeluisteren/overnemen*.
+> 2. **ESPHome** — zie [`esphome/`](esphome/). Past in je bestaande ESPHome-setup,
+>    maar is *alleen zenden* (inleren via PROG, geen sniffen).
+>
+> De bedrading is voor beide opties hetzelfde.
+
 ---
 
 ## 1. Belangrijk om vooraf te weten

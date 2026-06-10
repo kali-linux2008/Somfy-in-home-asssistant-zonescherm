@@ -1,0 +1,90 @@
+# ESPHome instellen
+substitutions:
+  device_name: zonnescherm
+  friendly_name: "Zonnescherm"
+  # Uniek 3-byte adres voor deze virtuele afstandsbediening (hex, 0x000001..0xFFFFFF).
+  # Geef elke shade zijn eigen adres als je er meerdere hebt.
+  remote_code: "0x100001"
+
+esphome:
+  name: ${device_name}
+  friendly_name: ${friendly_name}
+
+esp32:
+  board: esp32dev
+  framework:
+    type: esp-idf
+
+# Somfy RTS external component (gebruikt de officiele ESPHome CC1101 + remote_transmitter)
+external_components:
+  - source: github://HarmEllis/esphome-somfy-cover-remote@main
+    components: [ somfy_rts ]
+
+logger:
+api:
+  encryption:
+    key: !secret api_encryption_key
+ota:
+  - platform: esphome
+    password: !secret ota_password
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  ap:
+    ssid: "${device_name} fallback"
+    password: !secret ap_password
+captive_portal:
+
+# --- CC1101 bedrading (zie ../docs/bedrading.md) ---
+# CC1101  ->  ESP32
+#   SCK   ->  GPIO18   (spi clk_pin)
+#   MOSI  ->  GPIO23   (spi mosi_pin)
+#   MISO  ->  GPIO19   (spi miso_pin)  [op de module mogelijk gelabeld SO of GDO1]
+#   CSN   ->  GPIO5    (cc1101 cs_pin)
+#   GDO0  ->  GPIO2    (remote_transmitter pin = OOK datalijn)
+#   VCC   ->  3V3      GND -> GND
+spi:
+  clk_pin: GPIO18
+  mosi_pin: GPIO23
+  miso_pin: GPIO19
+
+cc1101:
+  id: cc1101_radio
+  cs_pin: GPIO5
+  frequency: 433.42MHz       # Somfy RTS = 433,42 MHz, NIET 433,92
+  modulation_type: ASK/OOK
+
+remote_transmitter:
+  id: transmitter
+  pin: GPIO2                 # verbonden met CC1101 GDO0
+  carrier_duty_percent: 100%
+
+somfy_rts:
+  - id: zonnescherm_cmd
+    remote_transmitter: transmitter
+    remote_code: ${remote_code}
+    storage_key: "${device_name}"
+    storage_namespace: "somfy_rts"
+    repeat_command_count: 4
+
+cover:
+  - platform: time_based
+    name: "Zonnescherm"
+    device_class: awning
+    # Meet de werkelijke tijden van volledig in -> volledig uit en pas aan:
+    open_duration: 18s
+    close_duration: 17s
+    open_action:
+      - somfy_rts.open: zonnescherm_cmd
+    close_action:
+      - somfy_rts.close: zonnescherm_cmd
+    stop_action:
+      - somfy_rts.stop: zonnescherm_cmd
+
+# Knop om de ESP32 in de motor in te leren (PROG).
+button:
+  - platform: template
+    name: "Zonnescherm PROG (inleren)"
+    entity_category: config
+    on_press:
+      - somfy_rts.program: zonnescherm_cmd
