@@ -113,42 +113,66 @@ void decodeFrame() {
   if (dataStart < 0) return;   // geen geldige sync gevonden
 
   // 2) Bouw de half-symbool stroom op uit de segmenten.
-  byte halfbits[120];
+  //    We verzamelen wat extra half-symbolen zodat we de uitlijning kunnen zoeken.
+  byte halfbits[128];
   int  hbCount = 0;
-  for (unsigned int i = dataStart; i < frameLen && hbCount < 112; i++) {
+  for (unsigned int i = dataStart; i < frameLen && hbCount < 124; i++) {
     unsigned int d = pulseLen[i];
     byte lvl = pulseLvl[i];
     if (d > SHORT_MIN && d < SHORT_MAX) {
       halfbits[hbCount++] = lvl;                 // 1 half-symbool
     } else if (d >= LONG_MIN && d < LONG_MAX) {
       halfbits[hbCount++] = lvl;                 // 2 half-symbolen, zelfde niveau
-      if (hbCount < 112) halfbits[hbCount++] = lvl;
+      if (hbCount < 124) halfbits[hbCount++] = lvl;
     } else {
       break;
     }
   }
 
-  // 3) Manchester: per bit 2 half-symbolen; Somfy '1' = hoog->laag.
-  byte frame[7] = {0};
-  int  bitCount = 0;
-  for (int i = 0; i + 1 < hbCount && bitCount < 56; i += 2) {
-    byte bit = halfbits[i];                      // eerste half bepaalt de bitwaarde
-    frame[bitCount / 8] |= bit << (7 - (bitCount % 8));
-    bitCount++;
+  // 3) Probeer meerdere uitlijningen (half-bit offset) + polariteit, en kies
+  //    degene waarvan de checksum klopt. Dit lost de Manchester-uitlijning op.
+  byte frame[7];
+  bool ok = false;
+  for (int off = 0; off <= 3 && !ok; off++) {
+    for (int inv = 0; inv <= 1 && !ok; inv++) {
+      ok = tryDecode(halfbits, hbCount, off, inv, frame);
+    }
   }
-  if (bitCount < 56) return;
 
-  // 4) De-obfuscatie (elk byte XOR vorige)
-  for (int i = 1; i < 7; i++) frame[i] ^= frame[i - 1];
+  if (!ok) {
+    // Niets klopte: toon best-effort (offset 0) als FOUT.
+    tryDecodeRaw(halfbits, hbCount, 0, 0, frame);
+    printFrame(frame, false);
+    return;
+  }
+  printFrame(frame, true);
+}
 
-  // 5) Checksum: XOR van alle nibbles moet 0 zijn
-  byte cksum = 0;
-  for (int i = 0; i < 7; i++) cksum ^= frame[i] ^ (frame[i] >> 4);
-  cksum &= 0x0F;
+// Bouwt 7 bytes uit de half-symboolstroom met gegeven offset/polariteit,
+// de-obfusceert en geeft true terug als de checksum klopt.
+bool tryDecode(byte* halfbits, int hbCount, int offset, bool invert, byte* outFrame) {
+  if (offset + 112 > hbCount) return false;
+  tryDecodeRaw(halfbits, hbCount, offset, invert, outFrame);
+  byte cks = 0;
+  for (int i = 0; i < 7; i++) cks ^= outFrame[i] ^ (outFrame[i] >> 4);
+  return (cks & 0x0F) == 0;
+}
 
-  // 6) Velden uitlezen
-  byte         command = frame[1] >> 4;
-  unsigned int rolling = (frame[2] << 8) | frame[3];
+void tryDecodeRaw(byte* halfbits, int hbCount, int offset, bool invert, byte* outFrame) {
+  for (int i = 0; i < 7; i++) outFrame[i] = 0;
+  for (int k = 0; k < 56; k++) {
+    int idx = offset + 2 * k;
+    byte bit = (idx < hbCount) ? halfbits[idx] : 0;   // eerste half = bitwaarde
+    if (invert) bit = !bit;
+    outFrame[k / 8] |= bit << (7 - (k % 8));
+  }
+  // De-obfuscatie (elk byte XOR vorige)
+  for (int i = 1; i < 7; i++) outFrame[i] ^= outFrame[i - 1];
+}
+
+void printFrame(byte* frame, bool valid) {
+  byte          command = frame[1] >> 4;
+  unsigned int  rolling = (frame[2] << 8) | frame[3];
   unsigned long address = ((unsigned long)frame[6] << 16) |
                           ((unsigned long)frame[5] << 8)  |
                            (unsigned long)frame[4];
@@ -165,7 +189,7 @@ void decodeFrame() {
   Serial.print(F("  Commando  : 0x")); Serial.print(command, HEX);
   Serial.print(F(" (")); Serial.print(commandName(command)); Serial.println(F(")"));
   Serial.print(F("  Checksum  : "));
-  Serial.println(cksum == 0 ? F("OK") : F("FOUT (frame mogelijk corrupt)"));
+  Serial.println(valid ? F("OK") : F("FOUT (geen geldige uitlijning gevonden)"));
   Serial.println();
 }
 
