@@ -16,6 +16,10 @@ Telis gewoon werken.
 >
 > De bedrading is voor beide opties hetzelfde.
 
+> **Eigen Home Assistant integratie:** in [`custom_components/zonnescherm_rts/`](custom_components/zonnescherm_rts/)
+> staat een herbrande HACS-integratie ("Zonnescherm RTS") voor de firmware-fork in
+> [`firmware/`](firmware/). Zie [de integratie-README](custom_components/zonnescherm_rts/README-INTEGRATIE.md).
+
 ---
 
 ## 1. Belangrijk om vooraf te weten

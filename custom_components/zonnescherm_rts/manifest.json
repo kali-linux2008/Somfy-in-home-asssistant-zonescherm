@@ -1,0 +1,25 @@
+{
+  "domain": "zonnescherm_rts",
+  "name": "Zonnescherm RTS",
+  "codeowners": ["@kali-linux2008"],
+  "config_flow": true,
+  "dependencies": [],
+  "documentation": "https://github.com/kali-linux2008/somfy-in-home-asssistant-zonescherm",
+  "homekit": {},
+  "integration_type": "hub",
+  "iot_class": "local_push",
+  "issue_tracker": "https://github.com/kali-linux2008/somfy-in-home-asssistant-zonescherm/issues",
+  "requirements": ["websocket-client==1.8.0", "aiofiles"],
+  "ssdp": [
+    {
+      "deviceType": "urn:schemas-rstrouse-org:device:ESPSomfyRTS:1"
+    }
+  ],
+  "version": "2.4.7",
+  "zeroconf": [
+    {
+      "type": "_espsomfy_rts._tcp.local.",
+      "properties": { "model": "espsomfy*" }
+    }
+  ]
+}
