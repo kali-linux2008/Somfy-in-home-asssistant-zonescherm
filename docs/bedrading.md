@@ -35,9 +35,14 @@ Veel CC1101-modules hebben de pinnen anders gelabeld. Veelvoorkomende namen:
 |--------------|--------------------------------------|
 | CSN          | CS, SS, NSS                          |
 | MOSI         | SI, MOSI                             |
-| MISO         | SO, MISO                             |
+| MISO         | SO, **GDO1**, MISO                   |
 | SCK          | SCLK, CLK                            |
 | GDO0         | GD0, GDO0                            |
 | GDO2         | GD2, GDO2                            |
+
+> **Geen MISO te vinden?** Op de CC1101 is de MISO-lijn fysiek dezelfde pin als
+> **GDO1**. Een module zonder pin met het label "MISO" heeft die vrijwel altijd
+> gelabeld als **SO** of **GDO1** — gebruik die pin voor MISO (→ GPIO19). Zonder
+> MISO/SO/GDO1 kan de ESP32 niet met de CC1101 communiceren, dus die pin moet er zijn.
 
 Controleer altijd de print/datasheet van jouw specifieke module.
