@@ -1,39 +1,41 @@
-# ESPHome instellen
-substitutions:
-  device_name: zonnescherm
-  friendly_name: "Zonnescherm"
-  # Uniek 3-byte adres voor deze virtuele afstandsbediening (hex, 0x000001..0xFFFFFF).
-  # Geef elke shade zijn eigen adres als je er meerdere hebt.
-  remote_code: "0x100001"
-
 esphome:
-  name: ${device_name}
-  friendly_name: ${friendly_name}
+  name: zonnescherm
+  friendly_name: zonnescherm
 
 esp32:
   board: esp32dev
   framework:
     type: esp-idf
 
-# Somfy RTS external component (gebruikt de officiele ESPHome CC1101 + remote_transmitter)
-external_components:
-  - source: github://HarmEllis/esphome-somfy-cover-remote@main
-    components: [ somfy_rts ]
-
+# Enable logging
 logger:
+
+# Enable Home Assistant API
 api:
   encryption:
     key: !secret api_encryption_key
+
 ota:
   - platform: esphome
     password: !secret ota_password
+
 wifi:
   ssid: !secret wifi_ssid
   password: !secret wifi_password
+
+  # Fallback hotspot (captive portal) als de wifi-verbinding faalt
   ap:
-    ssid: "${device_name} fallback"
+    ssid: "Zonnescherm Fallback Hotspot"
     password: !secret ap_password
+
 captive_portal:
+
+# === Somfy RTS via CC1101 ===
+
+# Somfy RTS external component (officiele ESPHome CC1101 + remote_transmitter)
+external_components:
+  - source: github://HarmEllis/esphome-somfy-cover-remote@main
+    components: [ somfy_rts ]
 
 # --- CC1101 bedrading (zie ../docs/bedrading.md) ---
 # CC1101  ->  ESP32
@@ -62,8 +64,8 @@ remote_transmitter:
 somfy_rts:
   - id: zonnescherm_cmd
     remote_transmitter: transmitter
-    remote_code: ${remote_code}
-    storage_key: "${device_name}"
+    remote_code: 0x100001    # uniek 3-byte adres voor deze virtuele afstandsbediening
+    storage_key: "zonnescherm"
     storage_namespace: "somfy_rts"
     repeat_command_count: 4
 
@@ -71,7 +73,7 @@ cover:
   - platform: time_based
     name: "Zonnescherm"
     device_class: awning
-    # Meet de werkelijke tijden van volledig in -> volledig uit en pas aan:
+    # Meet de werkelijke tijden volledig in -> volledig uit en pas aan:
     open_duration: 18s
     close_duration: 17s
     open_action:
@@ -81,7 +83,7 @@ cover:
     stop_action:
       - somfy_rts.stop: zonnescherm_cmd
 
-# Knop om de ESP32 in de motor in te leren (PROG).
+# Knop om de ESP32 in de motor in te leren (PROG)
 button:
   - platform: template
     name: "Zonnescherm PROG (inleren)"
