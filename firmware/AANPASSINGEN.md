@@ -8,12 +8,14 @@ afgestemd op deze opstelling. Volwaardige firmware met web-UI, MQTT en
 
 ## Eigen aanpassingen t.o.v. upstream
 
+Alle broncode staat in de sketchmap **`SomfyController/`**.
+
 | Wat | Bestand | Van → Naar |
 |-----|---------|-----------|
-| RX-pin (CC1101 GDO0) | `Somfy.h` | GPIO12 → **GPIO2** |
-| TX-pin (CC1101 GDO2) | `Somfy.h` | GPIO13 → **GPIO4** |
-| Apparaat-hostname | `ConfigSettings.h` | `ESPSomfyRTS` → **`Zonnescherm`** |
-| Web-UI titel/branding | `data/index.html` | `ESPSomfy RTS` → **`Zonnescherm RTS`** |
+| RX-pin (CC1101 GDO0) | `SomfyController/Somfy.h` | GPIO12 → **GPIO2** |
+| TX-pin (CC1101 GDO2) | `SomfyController/Somfy.h` | GPIO13 → **GPIO4** |
+| Apparaat-hostname | `SomfyController/ConfigSettings.h` | `ESPSomfyRTS` → **`Zonnescherm`** |
+| Web-UI titel/branding | `SomfyController/data/index.html` | `ESPSomfy RTS` → **`Zonnescherm RTS`** |
 
 Frequentie stond al goed op **433,42 MHz**. SPI-pinnen (SCK 18, MOSI 23, MISO 19,
 CSN 5) waren al gelijk aan je bedrading.
@@ -36,19 +38,51 @@ CSN 5) waren al gelijk aan je bedrading.
 
 ## Bouwen & flashen (Arduino IDE)
 
-1. **Board support**: ESP32 (esp32 by Espressif).
-2. **Library**: installeer **SmartRC-CC1101-Driver-Lib** (LSatan/ELECHOUSE) en de
-   overige afhankelijkheden die de IDE aangeeft (o.a. ArduinoJson).
-3. Open `SomfyController.ino` in deze map.
-4. Selecteer je ESP32-board, partitiescheme met genoeg ruimte + LittleFS.
-5. **Upload de sketch** (firmware).
-6. **Upload de `data/`-map als LittleFS-image** (web-UI). Gebruik de
-   "ESP32 LittleFS Data Upload"-tool of `arduino-littlefs-upload`.
-7. ESP32 verbindt met WiFi (AP-modus bij eerste keer) → open het IP in de browser.
+> **Mapstructuur:** de sketch staat in `firmware/SomfyController/`. Arduino eist dat
+> het hoofd-`.ino` in een map met dezelfde naam staat — dat is nu het geval. Open
+> dus **`firmware/SomfyController/SomfyController.ino`**; alle andere bestanden
+> verschijnen automatisch als tabbladen.
 
-> Liever niet compileren? Je kunt ook upstream de kant-en-klare web-installer
-> gebruiken en de pinnen/naam later in de web-UI zetten. Deze fork is voor wie de
-> defaults en branding in de code wil vastleggen.
+### 1. Board support
+- Installeer in de Boards Manager: **esp32 by Espressif Systems**.
+
+### 2. Libraries (via Bibliotheken beheren)
+| Library | Auteur | Let op |
+|---------|--------|--------|
+| **ArduinoJson** | Benoit Blanchon | **versie 6.x** — NIET v7 (code gebruikt `DynamicJsonDocument`) |
+| **SmartRC-CC1101-Driver-Lib** | LSatan / ELECHOUSE | de CC1101-radio |
+| **PubSubClient** | Nick O'Leary | MQTT |
+| **WebSockets** | Markus Sattler (Links2004) | `WebSocketsServer` |
+
+De overige includes (`WiFi`, `LittleFS`, `WebServer`, `ESPmDNS`, `Update`,
+`HTTPClient`, `Preferences`, `SPI`, ...) zitten al in de ESP32-core.
+
+### 3. Board-instellingen
+- **Board:** ESP32 Dev Module
+- **Partition Scheme:** **Huge APP (3MB No OTA/1MB SPIFFS)**
+  (de firmware is ~1,3 MB → past niet in de standaard 1,2 MB-app-partitie; de
+  `data/`-map is ~472 KB → past in de 1 MB filesysteempartitie)
+- **Flash Size:** 4MB
+
+### 4. Sketch flashen
+- Klik **Upload**. De eerste keer via USB; daarna kan het draadloos (OTA).
+
+### 5. Web-UI uploaden (LittleFS)
+De web-interface zit in `SomfyController/data/` en moet als filesysteem-image naar
+de ESP32:
+- Installeer de tool **arduino-littlefs-upload** (werkt in Arduino IDE 2.x), of de
+  klassieke "ESP32 Sketch Data Upload"-plugin (1.8.x).
+- Kies **LittleFS** en upload de `data/`-map.
+
+### 6. In gebruik nemen
+- ESP32 maakt bij eerste start een WiFi-accesspoint (AP). Verbind, geef je WiFi op.
+- Open daarna het IP-adres van de ESP32 in de browser → de "Zonnescherm RTS" web-UI.
+
+> Liever helemaal niet compileren? Gebruik upstream de **web-installer** (flasht de
+> kant-en-klare firmware vanuit de browser, geen Arduino nodig) en zet pinnen/naam
+> daarna in de web-UI. Deze fork is voor wie de defaults en branding in code wil
+> vastleggen.
+
 
 ## Home Assistant
 Installeer de integratie via HACS:
@@ -56,9 +90,9 @@ Installeer de integratie via HACS:
 ontdekt en je shades verschijnen als `cover`-entiteiten.
 
 ## Verder rebranden (optioneel)
-- **Logo**: vervang `data/icon.png`, `data/icon.svg`, `data/favicon.png` en
-  `data/apple-icon.png` door je eigen afbeeldingen (zelfde bestandsnamen/afmetingen).
-- **Naam**: de zichtbare naam staat in `data/index.html` (regel ~124) en de
-  hostname in `ConfigSettings.h`.
+- **Logo**: vervang `SomfyController/data/icon.png`, `icon.svg`, `favicon.png` en
+  `apple-icon.png` door je eigen afbeeldingen (zelfde bestandsnamen/afmetingen).
+- **Naam**: de zichtbare naam staat in `SomfyController/data/index.html` (regel ~124)
+  en de hostname in `SomfyController/ConfigSettings.h`.
 
 Geef me een naam/logo door als je een specifieke branding wilt, dan zet ik die erin.
